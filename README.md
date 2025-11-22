@@ -1,5 +1,4 @@
-# Folder Structure Generator - README
-
+# Folder Structure Generator
 ## 📋 Overview
 
 The **Folder Structure Generator** is a Python program that automatically creates folder structures and files from text input. Simply paste your desired folder structure, and the program will generate all the folders and empty files for you.
