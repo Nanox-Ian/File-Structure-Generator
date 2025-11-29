@@ -9,7 +9,7 @@ The **Folder Structure Generator** is a Python CLI program that automatically cr
 - Python 3.6 or higher
 - No additional packages required 
 
-### How to Use
+### How to Use 
 
 1. **Run the program:**
    ```bash
