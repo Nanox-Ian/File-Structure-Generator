@@ -4,7 +4,7 @@ from pathlib import Path
 
 def parse_folder_structure(text_input):
     """
-    Parse the pasted text into a proper folder structure
+    Parse the pasted text into a proper folder structure 
     This version better handles the tree hierarchy
     """
     lines = text_input.strip().split('\n')
@@ -326,3 +326,4 @@ if __name__ == "__main__":
     
     # Keep console open
     input("\nPress Enter to exit...")
+
