@@ -1,9 +1,8 @@
 # Folder Structure Generator
-## 📋 Overview
 
 The **Folder Structure Generator** is a Python CLI program that automatically creates folder structures and files from text input. Simply paste your desired folder structure, and the program will generate all the folders and empty files for you.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.6 or higher
@@ -24,7 +23,7 @@ The **Folder Structure Generator** is a Python CLI program that automatically cr
 
 3. **The program will automatically create all folders and files!**
 
-## 📝 Input Formats
+## Input Formats
 
 ### Format 1: Tree Structure (Recommended)
 Use tree characters (├, │, └, ──) to represent the hierarchy:
@@ -56,7 +55,7 @@ project/docs/README.md
 project/requirements.txt
 ```
 
-## 🎯 Features
+## Features
 
 - **Dual Parser Support**: Choose between tree format or simple paths
 - **Smart File Detection**: Automatically detects files vs folders
@@ -65,7 +64,7 @@ project/requirements.txt
 - **Error Handling**: Provides helpful error messages
 - **Summary Report**: Shows total files and folders created
 
-## 💡 Examples
+## Examples
 
 ### Example 1: Python Project
 ```
@@ -124,7 +123,7 @@ react-app/
 └── README.md
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -148,14 +147,14 @@ react-app/
 - **Test with the example** first to ensure it works in your environment
 - **Check the parsed structure** preview before creation
 
-## 📁 Output Structure
+## Output Structure
 
 The program creates:
 - **Empty folders** with proper hierarchy
 - **Empty files** with correct names and extensions
 - **All parent directories** automatically
 
-## 🛠️ Technical Details
+## Technical Details
 
 ### Supported Formats
 - Tree diagrams with Unicode characters (├, │, └, ──)
@@ -174,7 +173,7 @@ The program detects files based on:
 - Existing folder conflicts
 - Malformed path handling
 
-## 🤝 Contributing
+## Contributing
 
 Feel free to modify the code for your specific needs! The program is designed to be easily customizable.
 
@@ -184,10 +183,6 @@ Feel free to modify the code for your specific needs! The program is designed to
 - Add support for different file encodings
 - Create GUI version
 
-## 📄 License
+## License
 
 This is a free tool for developers to quickly bootstrap project structures.
-
----
-
-**Happy Coding!** 🎉
