@@ -1,7 +1,7 @@
 import os
 import re
 from pathlib import Path
-
+ 
 def parse_folder_structure(text_input):
     """
     Parse the pasted text into a proper folder structure 
