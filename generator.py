@@ -2,131 +2,166 @@ import os
 import re
 from pathlib import Path
 
-def count_vertical_bars(line):
-    """Count the number of vertical bars (│) at the start of the line"""
-    count = 0
-    for char in line:
-        if char == '│':
-            count += 1
-        elif char != ' ':
-            break
-    return count
+def calculate_tree_depth(line):
+    """
+    Calculate depth based on the position of tree characters.
+    Each level is indicated by 4 characters of indentation.
+    """
+    # Find the position of the first tree branch character (├ or └)
+    for i, char in enumerate(line):
+        if char in ['├', '└']:
+            # Depth = position / 4 (since each level is 4 chars)
+            return i // 4 + 1
+    
+    # If no ├ or └ found, check if it's a continuation line (starts with │)
+    if line.strip().startswith('│'):
+        # Find the position after │
+        for i, char in enumerate(line):
+            if char not in ['│', ' ']:
+                return i // 4 + 1
+    
+    # If line starts with text (root or direct child of root)
+    for i, char in enumerate(line):
+        if char not in [' ', '│', '├', '└', '─']:
+            if i == 0:
+                return 0  # Root
+            else:
+                return i // 4
+    
+    return 0
 
-def extract_name(line):
-    """Extract the name by removing all tree characters"""
-    # Remove trailing whitespace first
+def extract_clean_name(line):
+    """
+    Extract the clean name by removing all tree characters and dashes.
+    """
+    # Remove trailing whitespace
     cleaned = line.rstrip()
-    # Tree characters to remove from the beginning
-    tree_chars = ['│', ' ', '├', '─', '└', '┌', '┐', '┴', '┤', '┼', '┬']
     
-    # Remove tree characters from the start
-    while cleaned and cleaned[0] in tree_chars:
-        cleaned = cleaned[1:]
+    # Find where the actual name starts (after tree characters)
+    name_start = 0
+    while name_start < len(cleaned) and cleaned[name_start] in [' ', '│', '├', '└', '─']:
+        name_start += 1
     
-    # Also remove any remaining leading/trailing spaces and tree indicators
-    cleaned = cleaned.strip()
+    if name_start >= len(cleaned):
+        return ""
+    
+    name = cleaned[name_start:]
     
     # Remove any leading/trailing dashes or spaces
-    cleaned = cleaned.strip('─ ')
+    name = name.strip('─ ')
     
-    return cleaned
+    return name
 
-def parse_tree_structure_corrected(text_input):
+def parse_tree_structure_robust(text_input):
     """
-    Parse the pasted text into a proper folder structure using the specified algorithm
+    Robust parser for tree structures using proper depth calculation.
     """
     lines = text_input.strip().split('\n')
     
-    # Stack to track current folders, starting with root
-    folder_stack = [{'name': '', 'path': '', 'type': 'folder', 'children': []}]
+    # Find the root folder (first non-empty line without leading tree chars)
+    root_name = None
+    for line in lines:
+        if line.strip() and not any(c in line[0] for c in ['│', '├', '└', ' ']):
+            root_name = line.strip().rstrip('/')
+            break
     
-    # List to store all creation operations
+    if not root_name:
+        root_name = "project"
+    
+    # Initialize operations list and folder stack
     operations = []
+    operations.append({
+        'action': 'CREATE_FOLDER',
+        'name': root_name,
+        'path': f'/{root_name}/',
+        'parentPath': '/'
+    })
+    
+    # Stack to track parent folders at each depth level
+    # Each item: (depth, folder_path)
+    folder_stack = [(0, f'/{root_name}/')]
     
     # Process each line
     for line in lines:
         if not line.strip():
             continue
         
-        # Count vertical bars for depth level
-        depth = count_vertical_bars(line)
+        # Skip the root line (already processed)
+        if line.strip() == root_name or line.strip() == f"{root_name}/":
+            continue
         
-        # Extract name
-        name = extract_name(line)
+        # Calculate depth
+        depth = calculate_tree_depth(line)
         
+        # Extract clean name
+        name = extract_clean_name(line)
         if not name:
             continue
         
-        # Determine if it's a folder (ends with /) or file
-        is_folder = name.endswith('/')
-        clean_name = name[:-1] if is_folder else name
+        # Check if it's a folder
+        is_folder = name.endswith('/') or ('.' not in name.split('/')[-1])
+        clean_name = name.rstrip('/')
         
-        # Maintain stack based on depth
-        # Pop until stack size is depth + 1 (current level)
-        while len(folder_stack) > depth + 1:
+        # Find the correct parent based on depth
+        # Pop from stack until we find a parent at depth-1
+        while folder_stack and folder_stack[-1][0] >= depth:
             folder_stack.pop()
         
-        # Get current parent
-        current_parent = folder_stack[depth]
+        if not folder_stack:
+            # This shouldn't happen, but just in case
+            folder_stack = [(0, f'/{root_name}/')]
         
-        # Build path
-        if current_parent['path']:
-            if current_parent['path'].endswith('/'):
-                full_path = f"{current_parent['path']}{clean_name}"
-            else:
-                full_path = f"{current_parent['path']}/{clean_name}"
+        # Get parent path
+        parent_depth, parent_path = folder_stack[-1]
+        
+        # Build the full path
+        if parent_path.endswith('/'):
+            full_path = f"{parent_path}{clean_name}"
         else:
-            full_path = f"/{clean_name}" if clean_name else "/"
+            full_path = f"{parent_path}/{clean_name}"
         
-        # For folders, ensure path ends with /
         if is_folder:
             full_path = full_path.rstrip('/') + '/'
         
+        # Add to operations
+        operation = {
+            'action': 'CREATE_FOLDER' if is_folder else 'CREATE_FILE',
+            'name': clean_name,
+            'path': full_path,
+            'parentPath': parent_path
+        }
+        operations.append(operation)
+        
+        # If it's a folder, push it onto the stack for its children
         if is_folder:
-            # Create folder
-            new_folder = {
-                'name': clean_name,
-                'path': full_path,
-                'type': 'folder',
-                'children': []
-            }
-            
-            # Add to parent's children
-            current_parent['children'].append(new_folder)
-            
-            # Push to stack
-            folder_stack.append(new_folder)
-            
-            # Add to operations
-            operations.append({
-                'action': 'CREATE_FOLDER',
-                'name': clean_name,
-                'path': full_path,
-                'parentPath': current_parent['path']
-            })
-        else:
-            # Create file
-            new_file = {
-                'name': clean_name,
-                'path': full_path,
-                'type': 'file'
-            }
-            
-            # Add to parent's children
-            current_parent['children'].append(new_file)
-            
-            # Add to operations
-            operations.append({
-                'action': 'CREATE_FILE',
-                'name': clean_name,
-                'path': full_path,
-                'parentPath': current_parent['path']
-            })
+            folder_stack.append((depth, full_path))
     
     return {
-        'structure': folder_stack[0],
+        'structure': {'name': root_name, 'path': f'/{root_name}/', 'type': 'folder'},
         'operations': operations
     }
+
+def debug_tree_parsing(text_input):
+    """
+    Debug function to show how each line is parsed.
+    """
+    lines = text_input.strip().split('\n')
+    
+    print("\n🔍 DEBUG PARSING:")
+    print("=" * 60)
+    
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+        
+        depth = calculate_tree_depth(line)
+        name = extract_clean_name(line)
+        is_folder = name.endswith('/') or ('.' not in name.split('/')[-1]) if name else False
+        
+        print(f"Line {i:2}: '{line}'")
+        print(f"       Depth: {depth}, Name: '{name}', Is folder: {is_folder}")
+    
+    print("=" * 60)
 
 def create_structure_from_operations(base_path, operations):
     """
@@ -180,12 +215,12 @@ def display_operations(operations):
     print(f"\n📊 Total: {len(folder_ops)} folders, {len(file_ops)} files")
     print("-" * 60)
 
-def main_enhanced():
+def main_robust():
     """
-    Enhanced main function using the corrected parser
+    Main function using the robust tree parser
     """
     print("=" * 60)
-    print("🎯 FOLDER STRUCTURE GENERATOR (Enhanced Parser)")
+    print("🎯 FOLDER STRUCTURE GENERATOR (Robust Tree Parser)")
     print("=" * 60)
     
     # Get the folder structure from user
@@ -221,10 +256,17 @@ def main_enhanced():
     if not main_folder:
         main_folder = "my_project"
     
-    # Parse the structure using the corrected algorithm
+    # Optional: show debug info
+    print("\n🔍 Show debug parsing info? (y/N):")
+    show_debug = input().strip().lower()
+    
+    if show_debug == 'y':
+        debug_tree_parsing(folder_structure_text)
+    
+    # Parse the structure using the robust algorithm
     print("\n⏳ Parsing folder structure...")
     try:
-        result = parse_tree_structure_corrected(folder_structure_text)
+        result = parse_tree_structure_robust(folder_structure_text)
         operations = result['operations']
         
         if not operations:
@@ -269,15 +311,49 @@ def main_enhanced():
         traceback.print_exc()
         print("Please check your input format and try again.")
 
-# Update the existing parse_tree_structure function to use the corrected version
+# Alternative: Simplified depth calculation for compatibility
+def parse_tree_depth_simple(line):
+    """
+    Simplified depth calculation: count groups of 4-space indentation
+    """
+    # Count leading spaces
+    leading_spaces = len(line) - len(line.lstrip(' '))
+    
+    # Count tree characters that indicate depth
+    tree_chars = 0
+    for char in line[:min(leading_spaces + 4, len(line))]:
+        if char in ['├', '└']:
+            tree_chars += 1
+    
+    # Each tree character adds one level, each 4 spaces adds one level
+    return (leading_spaces // 4) + tree_chars
+
+# Legacy function for backward compatibility
 def parse_tree_structure(text_input):
     """Wrapper for compatibility with existing code"""
-    result = parse_tree_structure_corrected(text_input)
+    result = parse_tree_structure_robust(text_input)
     return result['structure']
 
+# Legacy functions (kept for reference)
+def count_vertical_bars(line):
+    """Legacy function - kept for compatibility"""
+    return calculate_tree_depth(line)
+
+def extract_name(line):
+    """Legacy function - kept for compatibility"""
+    return extract_clean_name(line)
+
+def parse_tree_structure_corrected(text_input):
+    """Legacy function - kept for compatibility"""
+    return parse_tree_structure_robust(text_input)
+
+def main_enhanced():
+    """Legacy main function - kept for compatibility"""
+    main_robust()
+
 if __name__ == "__main__":
-    # Run the enhanced version
-    main_enhanced()
+    # Run the robust version
+    main_robust()
     
     # Keep console open
     input("\nPress Enter to exit...")
